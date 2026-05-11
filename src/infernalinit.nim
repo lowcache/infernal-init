@@ -13,18 +13,18 @@ const
   white = "\x1b[1;37m"
   reset = "\x1b[0m"
 
-  # Big Text: Infernal NixOS (Blocky style)
+  # Big Text: Infernal NixOS (Blocky style) - Using raw strings (r"") to handle backslashes
   titleArt = [
-    "  ___ _   _ _____ _____ ____  _   _    _    _       ",
-    " |_ _| \ | |  ___| ____|  _ \| \ | |  / \  | |      ",
-    "  | ||  \| | |_  |  _| | |_) |  \| | / _ \ | |      ",
-    "  | || |\  |  _| | |___|  _ <| |\  |/ ___ \| |___   ",
-    " |___|_| \_|_|   |_____|_| \_\_| \_/_/   \_\_____|  ",
-    "           _   _ _____  _____  ____                 ",
-    "          | \ | |_ _\ \/ / _ \/ ___|                ",
-    "          |  \| || | \  / | | \___ \                ",
-    "          | |\  || | /  \ |_| |___) |               ",
-    "          |_| \_|___/_/\_\___/|____/                "
+    r"  ___ _   _ _____ _____ ____  _   _    _    _       ",
+    r" |_ _| \ | |  ___| ____|  _ \| \ | |  / \  | |      ",
+    r"  | ||  \| | |_  |  _| | |_) |  \| | / _ \ | |      ",
+    r"  | || |\  |  _| | |___|  _ <| |\  |/ ___ \| |___   ",
+    r" |___|_| \_|_|   |_____|_| \_\_| \_/_/   \_\_____|  ",
+    r"           _   _ _____  _____  ____                 ",
+    r"          | \ | |_ _\ \/ / _ \/ ___|                ",
+    r"          |  \| || | \  / | | \___ \                ",
+    r"          | |\  || | /  \ |_| |___) |               ",
+    r"          |_| \_|___/_/\_\___/|____/                "
   ]
   
   tagline = "neither master nor slave to neither god nor man. lowcache 2026"
@@ -33,7 +33,7 @@ proc stripAnsi(s: string): string =
   result = ""
   var i = 0
   while i < s.len:
-    if s[i] == '\x1b': # Fixed character constant
+    if s[i] == '\x1b':
       inc i
       if i < s.len and s[i] == '[':
         inc i
@@ -110,7 +110,7 @@ proc main() =
 
   # 1. Print first half of tbann
   for i in 0 ..< mid:
-    let padding = (termWidth - 100) div 2 # Approx width
+    let padding = (termWidth - 100) div 2
     if padding > 0: stdout.write(repeat(' ', padding))
     stdout.writeLine(lines[i])
 
