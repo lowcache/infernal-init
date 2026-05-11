@@ -2,8 +2,7 @@ import os, osproc, strutils, terminal
 
 const
   bannerRaw = staticRead("../assets/tbann")
-  handle = "lowcache"
-  onlineHandle = "@drawpdeadredd"
+  onlineHandle = "@lowcache"
   
   # Colors
   red = "\x1b[1;31m"
@@ -23,7 +22,7 @@ const
     r" |___|_| \_|_|   |_____|_| \_\_| \_/_/   \_\_____|   |_| \_|___/_/\_\___/|____/  "
   ]
   
-  tagline = "neither master nor slave to neither god nor man. lowcache 2026"
+  tagline = "Neither Master Nor Slave To Neither God Nor Man."
 
 proc stripAnsi(s: string): string =
   result = ""
@@ -48,38 +47,22 @@ proc centerText(text: string) =
     stdout.write(repeat(' ', padding))
   stdout.writeLine(text)
 
-proc getUptime(): string =
-  try:
-    let (up, exitCode) = execCmdEx("uptime -p")
-    if exitCode == 0:
-      return up.strip().replace("up ", "")
-    else:
-      let fullUp = execProcess("uptime").strip()
-      let parts = fullUp.split("up")
-      if parts.len > 1:
-        return parts[1].split(',')[0].strip()
-      return fullUp.split(',')[0].strip()
-  except: return "unknown"
-
 proc getOS(): string =
   try:
-    for line in readFile("/etc/os-release").splitLines():
-      if line.startsWith("NAME="):
-        return line.split('=')[1].strip(chars = {'"'})
-    return "NixOS"
-  except: return "NixOS"
+    let content = readFile("/etc/os-release")
+    for line in content.splitLines():
+      if line.startsWith("PRETTY_NAME="):
+        result = line.split('=')[1].strip(chars = {'"'})
+        break
+    return result
+  except: return "NixOS (Yarara)"
 
 proc drawInfoTable() =
   let width = terminalWidth()
   let 
-    k1 = "OS"
+    k1 = " "
     v1 = getOS()
-    k2 = "Kernel"
-    v2 = execProcess("uname -r").strip()
-    k3 = "Shell"
-    v3 = os.getEnv("SHELL").lastPathPart()
-    k4 = "Uptime"
-    v4 = getUptime()
+    
 
   let tableWidth = 54
   let padding = (width - tableWidth) div 2
@@ -100,9 +83,6 @@ proc drawInfoTable() =
     stdout.writeLine(white & "┃" & reset)
 
   row(k1, v1)
-  row(k2, v2)
-  row(k3, v3)
-  row(k4, v4)
   stdout.writeLine(padStr & white & bottom & reset)
 
 proc main() =
@@ -146,7 +126,7 @@ proc main() =
     stdout.writeLine(lines[i])
 
   # 4. Table
-  centerText(orange & handle & reset & " ➜ " & yellow & onlineHandle & reset)
+  centerText(orange & execProcess("echo $USER").strip() & reset & " ➜ " & yellow & onlineHandle & reset)
   drawInfoTable()
   stdout.writeLine("")
 
