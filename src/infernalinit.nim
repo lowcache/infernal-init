@@ -9,22 +9,21 @@ const
   red = "\x1b[1;31m"
   yellow = "\x1b[1;33m"
   cyan = "\x1b[1;36m"
-  magenta = "\x1b[1;35m"
   white = "\x1b[1;37m"
+  
+  # Colors from tbann palette
+  orange = "\x1b[38;2;252;182;72m"
+  cream = "\x1b[38;2;255;192;77m"
+  
   reset = "\x1b[0m"
 
-  # Big Text: Infernal NixOS (Blocky style) - Using raw strings (r"") to handle backslashes
+  # Big Text: Infernal NixOS (Single Line Blocky style)
   titleArt = [
-    r"  ___ _   _ _____ _____ ____  _   _    _    _       ",
-    r" |_ _| \ | |  ___| ____|  _ \| \ | |  / \  | |      ",
-    r"  | ||  \| | |_  |  _| | |_) |  \| | / _ \ | |      ",
-    r"  | || |\  |  _| | |___|  _ <| |\  |/ ___ \| |___   ",
-    r" |___|_| \_|_|   |_____|_| \_\_| \_/_/   \_\_____|  ",
-    r"           _   _ _____  _____  ____                 ",
-    r"          | \ | |_ _\ \/ / _ \/ ___|                ",
-    r"          |  \| || | \  / | | \___ \                ",
-    r"          | |\  || | /  \ |_| |___) |               ",
-    r"          |_| \_|___/_/\_\___/|____/                "
+    r"  ___ _   _ _____ _____ ____  _   _    _    _         _   _ _____  _____  ____   ",
+    r" |_ _| \ | |  ___| ____|  _ \| \ | |  / \  | |       | \ | |_ _\ \/ / _ \/ ___|  ",
+    r"  | ||  \| | |_  |  _| | |_) |  \| | / _ \ | |       |  \| || | \  / | | \___ \  ",
+    r"  | || |\  |  _| | |___|  _ <| |\  |/ ___ \| |___    | |\  || | /  \ |_| |___) | ",
+    r" |___|_| \_|_|   |_____|_| \_\_| \_/_/   \_\_____|   |_| \_|___/_/\_\___/|____/  "
   ]
   
   tagline = "neither master nor slave to neither god nor man. lowcache 2026"
@@ -91,7 +90,7 @@ proc drawInfoTable() =
   proc row(key, val: string) =
     let cleanLine = "  " & key & ": " & val
     let spaces = tableWidth - 4 - cleanLine.len
-    stdout.writeLine(padStr & white & "┃" & reset & yellow & " " & key & reset & white & " ➜ " & reset & cyan & val & repeat(" ", if spaces > 0: spaces else: 0) & white & " ┃" & reset)
+    stdout.writeLine(padStr & white & "┃" & reset & orange & " " & key & reset & white & " ➜ " & reset & cream & val & repeat(" ", if spaces > 0: spaces else: 0) & white & " ┃" & reset)
 
   row(k1, v1)
   row(k2, v2)
@@ -101,7 +100,7 @@ proc drawInfoTable() =
   stdout.writeLine(padStr & white & bottom & reset)
 
 proc main() =
-  # Clear screen using \x1b
+  # Clear screen
   stdout.write("\x1b[H\x1b[2J")
   
   let lines = bannerRaw.splitLines()
@@ -116,12 +115,13 @@ proc main() =
 
   stdout.writeLine("")
 
-  # 2. Print Big Title
+  # 2. Print Big Title (Single Row)
   for line in titleArt:
     centerText(red & line & reset)
   
   stdout.writeLine("")
-  centerText(magenta & tagline & reset)
+  # Tagline in matching Cream
+  centerText(cream & tagline & reset)
   stdout.writeLine("")
 
   # 3. Print second half of tbann
@@ -133,7 +133,7 @@ proc main() =
   stdout.writeLine("")
 
   # 4. Branding & Table
-  centerText(yellow & handle & reset & " ➜ " & cyan & onlineHandle & reset)
+  centerText(orange & handle & reset & " ➜ " & yellow & onlineHandle & reset)
   stdout.writeLine("")
   drawInfoTable()
   stdout.writeLine("")
