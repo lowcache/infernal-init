@@ -5,19 +5,16 @@ const
   handle = "lowcache"
   onlineHandle = "@drawpdeadredd"
   
-  # Colors using \x1b for Escape
+  # Colors
   red = "\x1b[1;31m"
-  yellow = "\x1b[1;33m"
-  cyan = "\x1b[1;36m"
-  white = "\x1b[1;37m"
-  
-  # Colors from tbann palette
   orange = "\x1b[38;2;252;182;72m"
   cream = "\x1b[38;2;255;192;77m"
-  
+  white = "\x1b[1;37m"
+  yellow = "\x1b[1;33m"
+  cyan = "\x1b[1;36m"
   reset = "\x1b[0m"
 
-  # Big Text: Infernal NixOS (Single Line Blocky style)
+  # Big Text: Infernal NixOS
   titleArt = [
     r"  ___ _   _ _____ _____ ____  _   _    _    _         _   _ _____  _____  ____   ",
     r" |_ _| \ | |  ___| ____|  _ \| \ | |  / \  | |       | \ | |_ _\ \/ / _ \/ ___|  ",
@@ -53,8 +50,15 @@ proc centerText(text: string) =
 
 proc getUptime(): string =
   try:
-    let up = execProcess("uptime -p").strip()
-    return up.replace("up ", "")
+    let (up, exitCode) = execCmdEx("uptime -p")
+    if exitCode == 0:
+      return up.strip().replace("up ", "")
+    else:
+      let fullUp = execProcess("uptime").strip()
+      let parts = fullUp.split("up")
+      if parts.len > 1:
+        return parts[1].split(',')[0].strip()
+      return fullUp.split(',')[0].strip()
   except: return "unknown"
 
 proc getOS(): string =
@@ -77,8 +81,7 @@ proc drawInfoTable() =
     k4 = "Uptime"
     v4 = getUptime()
 
-  # Formatting info into a table
-  let tableWidth = 50
+  let tableWidth = 54
   let padding = (width - tableWidth) div 2
   let padStr = if padding > 0: repeat(' ', padding) else: ""
 
@@ -88,15 +91,18 @@ proc drawInfoTable() =
   stdout.writeLine(padStr & white & border & reset)
   
   proc row(key, val: string) =
-    let cleanLine = "  " & key & ": " & val
-    let spaces = tableWidth - 4 - cleanLine.len
-    stdout.writeLine(padStr & white & "┃" & reset & orange & " " & key & reset & white & " ➜ " & reset & cream & val & repeat(" ", if spaces > 0: spaces else: 0) & white & " ┃" & reset)
+    let contentLen = 2 + key.len + 3 + val.len
+    let trailing = tableWidth - 2 - contentLen
+    stdout.write(padStr & white & "┃" & reset)
+    stdout.write("  " & orange & key & reset & white & " ➜ " & reset & cream & val)
+    if trailing > 0:
+      stdout.write(repeat(" ", trailing))
+    stdout.writeLine(white & "┃" & reset)
 
   row(k1, v1)
   row(k2, v2)
   row(k3, v3)
   row(k4, v4)
-  
   stdout.writeLine(padStr & white & bottom & reset)
 
 proc main() =
@@ -104,37 +110,43 @@ proc main() =
   stdout.write("\x1b[H\x1b[2J")
   
   let lines = bannerRaw.splitLines()
-  let mid = lines.len div 2
+  
+  # Search for the orange dx and orange == split point
+  # Based on investigation, line 48 has dx and line 49 has ==
+  var splitIdx = 48
+  for i, line in lines:
+    # Look for d...x...| and next has =...=.../
+    if line.contains('d') and line.contains('x') and line.contains('|'):
+      if i + 1 < lines.len and lines[i+1].contains('=') and lines[i+1].contains('/'):
+        splitIdx = i + 1
+        break
+
   let termWidth = terminalWidth()
 
-  # 1. Print first half of tbann
-  for i in 0 ..< mid:
+  # 1. Print bulk of ASCII up to split
+  for i in 0 ..< splitIdx:
     let padding = (termWidth - 100) div 2
     if padding > 0: stdout.write(repeat(' ', padding))
     stdout.writeLine(lines[i])
 
   stdout.writeLine("")
 
-  # 2. Print Big Title (Single Row)
+  # 2. Print Branding Block
   for line in titleArt:
     centerText(red & line & reset)
   
   stdout.writeLine("")
-  # Tagline in matching Cream
   centerText(cream & tagline & reset)
   stdout.writeLine("")
 
-  # 3. Print second half of tbann
-  for i in mid ..< lines.len:
+  # 3. Print remaining lines
+  for i in splitIdx ..< lines.len:
     let padding = (termWidth - 100) div 2
     if padding > 0: stdout.write(repeat(' ', padding))
     stdout.writeLine(lines[i])
 
-  stdout.writeLine("")
-
-  # 4. Branding & Table
+  # 4. Table
   centerText(orange & handle & reset & " ➜ " & yellow & onlineHandle & reset)
-  stdout.writeLine("")
   drawInfoTable()
   stdout.writeLine("")
 
