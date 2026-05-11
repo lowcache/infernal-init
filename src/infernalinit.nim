@@ -5,13 +5,13 @@ const
   handle = "lowcache"
   onlineHandle = "@drawpdeadredd"
   
-  # Colors
-  red = "\e[1;31m"
-  yellow = "\e[1;33m"
-  cyan = "\e[1;36m"
-  magenta = "\e[1;35m"
-  white = "\e[1;37m"
-  reset = "\e[0m"
+  # Colors using \x1b for Escape
+  red = "\x1b[1;31m"
+  yellow = "\x1b[1;33m"
+  cyan = "\x1b[1;36m"
+  magenta = "\x1b[1;35m"
+  white = "\x1b[1;37m"
+  reset = "\x1b[0m"
 
   # Big Text: Infernal NixOS (Blocky style)
   titleArt = [
@@ -33,7 +33,7 @@ proc stripAnsi(s: string): string =
   result = ""
   var i = 0
   while i < s.len:
-    if s[i] == '\e':
+    if s[i] == '\x1b': # Fixed character constant
       inc i
       if i < s.len and s[i] == '[':
         inc i
@@ -84,7 +84,6 @@ proc drawInfoTable() =
   let padStr = if padding > 0: repeat(' ', padding) else: ""
 
   let border = "┏" & repeat("━", tableWidth - 2) & "┓"
-  let divider = "┠" & repeat("─", tableWidth - 2) & "┨"
   let bottom = "┗" & repeat("━", tableWidth - 2) & "┛"
 
   stdout.writeLine(padStr & white & border & reset)
@@ -102,8 +101,8 @@ proc drawInfoTable() =
   stdout.writeLine(padStr & white & bottom & reset)
 
 proc main() =
-  # Clear and Prepare
-  stdout.write("\e[H\e[2J")
+  # Clear screen using \x1b
+  stdout.write("\x1b[H\x1b[2J")
   
   let lines = bannerRaw.splitLines()
   let mid = lines.len div 2

@@ -17,7 +17,7 @@
           version = "0.1.0";
           src = ./.;
           buildInputs = with pkgs; [ nim ];
-
+          
           nimFlags = [
             "--d:release"
             "--opt:speed"
