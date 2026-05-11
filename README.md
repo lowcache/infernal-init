@@ -1,5 +1,7 @@
 # ⛧ infernal-init
 
+![infernal-init screenshot](screenshot.png)
+
 > "neither master nor slave to neither god nor man."
 
 `infernal-init` is a high-performance shell initiation banner written in Nim. Unlike traditional "fetch" tools, it is designed as the graphical manifestation of a new terminal session, providing immediate branding, high-impact ASCII art, and essential system telemetry.
