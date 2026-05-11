@@ -17,13 +17,6 @@
           version = "0.1.0";
           src = ./.;
           buildInputs = with pkgs; [ nim ];
-          
-          # We will embed the banner during build or look for it in a specific path
-          # For now, let's assume we copy the tbann file into the package
-          postPatch = ''
-            mkdir -p assets
-            cp ${../../tbann} assets/tbann
-          '';
 
           nimFlags = [
             "--d:release"
