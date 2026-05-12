@@ -10,12 +10,12 @@ const
   onlineHandle = "@lowcache"
   
   # Colors
-  red = fgred
-  orange = fgorange
+  red = "\x1b[1;31m"
+  orange = "\x1b[38;2;252;182;72m"
   cream = "\x1b[38;2;255;192;77m"
-  white = fgwhite
-  yellow = fgyellow
-  cyan = fgcyan
+  white = "\x1b[1;37m"
+  yellow = "\x1b[1;33m"
+  cyan = "\x1b[1;36m"
   reset = "\x1b[0m"
 
 
@@ -48,65 +48,63 @@ proc stripAnsi(s: string): string =
     else:
       result.add s[i]
       inc i
-
+      
 proc centerText(text: string) =
   let width = terminalWidth()
   let cleanText = stripAnsi(text)
   let padding = (width - cleanText.len) div 2
   if padding > 0:
     stdout.write(repeat(' ', padding))
-    stdout.writeLine(text)
-
+  stdout.styledwriteLine(text)
+  
 proc getOS(): string =
-  try:
-    let result = "/etc/os-release".loadconfig.getSectionValue("", "PRETTY_NAME"):
-    return result
-  except: return "NixOS (Yarara)"
-
+  result = "/etc/os-release".loadconfig.getSectionValue("", "PRETTY_NAME")
+  return result
+  
 proc drawInfoTable() =
   let width = terminalWidth()
   let distro = getOS()
+  let quote = tagline
   let tableWidth = 54
   let padding = (width - tableWidth) div 2
   let padStr = if padding > 0: repeat(' ', padding) else: ""
 
-  centertext(cream & distro & reset)
-
-
+  centerText(orange & execProcess("echo $USER").strip() & reset & " " & yellow & onlineHandle & reset)
+  centerText(cream & distro & reset)
+  
 proc main() =
   # Clear screen
   stdout.write("\x1b[H\x1b[2J")
+  
   let lines = bannerRaw.splitLines()
-
-  var splitIdx = 48
-  for i, line in lines:
-    # Look for d...x...| and next has =...=.../
-    if i + splitIdx < lines.len
-      splitIdx = lines.len - 20
-      break
-
+  let totalLines = lines.len
+  
+  # Calculate split index - exactly 20 lines from bottom
+  var splitIdx = totalLines - 20
+  if splitIdx < 0:
+    splitIdx = 0
+  
   let termWidth = terminalWidth()
-
   # 1. Print bulk of ASCII up to split
   for i in 0 ..< splitIdx:
-    let padding = (termWidth - 114) div 2
-    if padding > 0: stdout.write(repeat(' ', padding))
+    let padding = (termWidth - titleArt[0].len) div 2
+    if padding > 0:
+      stdout.write(repeat(' ', padding))
     stdout.writeLine(lines[i])
-
-  # 2. Print Branding Block
-  for line in titleArt:
-    centerText(red & line & reset)
-
-  centerText(cream & tagline & reset)
+  
+  # 2. Print Branding Block with deep red color
+  for tline in titleArt:
+    centerText(red & tline & reset)
+    
+  # 3. Print OS information centered below branding block
   drawInfoTable()
-  # 3. Print remaining lines
-  for i in splitIdx ..< lines.len:
-    let padding = (termWidth - 114) div 2
-    if padding > 0: stdout.write(repeat(' ', padding))
+  centerText(cream & tagline & reset)
+  # 4. Print remaining lines (if any) and local username at very bottom
+  for i in splitIdx ..< totalLines:
+    let padding = (termWidth - titleArt[0].len) div 2
+    if padding > 0:
+      stdout.write(repeat(' ', padding))
     stdout.writeLine(lines[i])
-  # 4. Table
-  centerText(orange & execProcess("echo $USER").strip() & reset & yellow & onlineHandle & reset)
-
 
 when isMainModule:
   main()
