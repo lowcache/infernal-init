@@ -128,8 +128,8 @@ proc main() =
   let bannerPadding = (width - maxBannerWidth) div 2
   let bannerPadStr = if bannerPadding > 0: repeat(' ', bannerPadding) else: ""
 
-  # banner + 1 gap line + title block + 3 identity lines
-  let totalOutputHeight = lines.len + processedTitle.len + 4
+  # banner + title block + 3 identity lines (name/handle, OS, tagline)
+  let totalOutputHeight = lines.len + processedTitle.len + 3
   let verticalPadding = (height - totalOutputHeight) div 2
 
   stdout.write("\x1b[H\x1b[2J")
@@ -142,8 +142,6 @@ proc main() =
   for line in lines:
     stdout.write(bannerPadStr)
     stdout.writeLine(line)
-
-  stdout.writeLine("")  # gap between badge and wordmark
 
   # Center the title as one block (uniform left pad) so trailing-space rows
   # don't drift right the way per-line centering would.

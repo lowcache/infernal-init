@@ -1,6 +1,6 @@
 # ⛧ infernal-init
 
-![LowCache](assets/lowcachelogo.png)
+![infernal-init banner — LowCache chip art rendered in a terminal](assets/infernalinitscreenshot.png)
 
 > LowCache, High Throughput
 
