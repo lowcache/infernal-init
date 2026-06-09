@@ -1,8 +1,8 @@
 # ⛧ infernal-init
 
-![infernal-init screenshot](screenshot.png)
+![LowCache](assets/lowcachelogo.png)
 
-> "neither master nor slave to neither god nor man."
+> LowCache, High Throughput
 
 `infernal-init` is a high-performance shell initiation banner written in Nim. Unlike traditional "fetch" tools, it is designed as the graphical manifestation of a new terminal session, providing immediate branding, high-impact ASCII art, and essential system telemetry.
 
@@ -48,7 +48,7 @@ end
 
 ## 🎨 Configuration
 
-The tool embeds assets at compile-time for maximum speed. To customize the ASCII art or tagline, modify `assets/tbann` and `src/infernalinit.nim` respectively, then rebuild the derivation.
+The tool embeds assets at compile-time for maximum speed. To customize the ASCII art or tagline, modify `assets/lowcacheascii` and `src/infernalinit.nim` respectively, then rebuild the derivation.
 
 ---
 *lowcache 2026*
