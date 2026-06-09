@@ -1,5 +1,5 @@
 {
-  description = "infernalinit - Graphical shell initiation banner";
+  description = "volinit - Graphical shell initiation banner";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -13,7 +13,7 @@
       in
       {
         packages.default = pkgs.buildNimPackage {
-          pname = "infernalinit";
+          pname = "volinit";
           version = "0.1.0";
           src = ./.;
           buildInputs = with pkgs; [ nim ];
@@ -26,7 +26,7 @@
 
         apps.default = {
           type = "app";
-          program = "${self.packages.${system}.default}/bin/infernalinit";
+          program = "${self.packages.${system}.default}/bin/volinit";
         };
 
         devShells.default = pkgs.mkShell {

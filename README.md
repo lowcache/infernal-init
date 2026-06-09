@@ -1,10 +1,10 @@
-# ⛧ infernal-init
+# ⛧ volinit
 
-![infernal-init banner — LowCache chip art rendered in a terminal](assets/infernalinitscreenshot.png)
+![volinit banner — LowCache chip art rendered in a terminal](assets/volinitscreenshot.png)
 
 > LowCache, High Throughput
 
-`infernal-init` is a high-performance shell initiation banner written in Nim. Unlike traditional "fetch" tools, it is designed as the graphical manifestation of a new terminal session, providing immediate branding, high-impact ASCII art, and essential system telemetry.
+`volinit` is a high-performance shell initiation banner written in Nim. Unlike traditional "fetch" tools, it is designed as the graphical manifestation of a new terminal session, providing immediate branding, high-impact ASCII art, and essential system telemetry.
 
 ## ⚡ Features
 
@@ -19,7 +19,7 @@
 Run it immediately without installing:
 
 ```bash
-nix run github:lowcache/infernal-init
+nix run github:lowcache/volinit
 ```
 
 ## 🛠️ Installation (NixOS Flake)
@@ -27,14 +27,14 @@ nix run github:lowcache/infernal-init
 1. Add it to your `flake.nix` inputs:
 
 ```nix
-inputs.infernal-init.url = "github:lowcache/infernal-init";
+inputs.volinit.url = "github:lowcache/volinit";
 ```
 
 2. Add the package to your `home-manager` or system packages:
 
 ```nix
 environment.systemPackages = [
-  inputs.infernal-init.packages.${system}.default
+  inputs.volinit.packages.${system}.default
 ];
 ```
 
@@ -42,13 +42,13 @@ environment.systemPackages = [
 
 ```fish
 if status is-interactive
-    infernalinit
+    volinit
 end
 ```
 
 ## 🎨 Configuration
 
-The tool embeds assets at compile-time for maximum speed. To customize the ASCII art or tagline, modify `assets/lowcacheascii` and `src/infernalinit.nim` respectively, then rebuild the derivation.
+The tool embeds assets at compile-time for maximum speed. To customize the ASCII art or tagline, modify `assets/lowcacheascii` and `src/volinit.nim` respectively, then rebuild the derivation.
 
 ---
 *lowcache 2026*
