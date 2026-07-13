@@ -40,13 +40,17 @@ proc determineMode*(requestedMode: string, width: int): string =
   if width >= 60: return "compact"
   return "monogram"
 
+proc renderHero*(plan: RenderPlan)
+
 proc renderSplitPanel*(plan: RenderPlan) =
   let rawLines = plan.banner.splitLines()
   let bannerMinIndent = getMinIndent(rawLines)
   var bannerLines: seq[string] = @[]
   for rline in rawLines:
-    bannerLines.add(stripLeadingSpaces(rline, bannerMinIndent))
-    
+    # Trailing colored whitespace must go: printed width has to equal
+    # visualWidth or the right-hand column drifts per row
+    bannerLines.add(stripTrailingVisual(stripLeadingSpaces(rline, bannerMinIndent)))
+
   var maxBannerWidth = 0
   for line in bannerLines:
     let w = visualWidth(line)
@@ -79,8 +83,13 @@ proc renderSplitPanel*(plan: RenderPlan) =
     if w > maxRightWidth: maxRightWidth = w
   
   let totalWidth = maxBannerWidth + gap + maxRightWidth
+  if totalWidth > plan.width:
+    # Content doesn't fit side-by-side (e.g. 160-162-col terminals where
+    # art 92 + gap 4 + title 67 = 163) — stack it instead of wrapping
+    renderHero(plan)
+    return
   let leftPad = max(0, (plan.width - totalWidth) div 2)
-  
+
   for row in 0..<totalHeight:
     if leftPad > 0: stdout.write(repeat(' ', leftPad))
     
