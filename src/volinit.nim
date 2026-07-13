@@ -1,28 +1,8 @@
-import
-  std/os,
-  std/strutils,
-  std/terminal,
-  std/parsecfg,
-  std/unicode,
-  std/re
+import std/os, std/strutils, std/terminal
+import volinitpkg/ansi, volinitpkg/probes, volinitpkg/config, volinitpkg/layout
 
 const
-  bannerWide = staticRead("../assets/lowcacheascii")        # ~116 cols (full-screen)
-  # bannerCompact = staticRead("../assets/lowcacheascii-sm") # ~80 cols — uncomment once rendered
-  onlineHandle = "@lowcache"
-
-  # Palette — green/grey to match the chip badge
-  titleCol  = "\x1b[38;2;170;215;30m"   # PCB green  — LowCache wordmark
-  nameCol   = "\x1b[38;2;200;205;200m"  # die silver — USER
-  handleCol = "\x1b[38;2;205;185;100m"  # die-label gold — @handle
-  infoCol   = "\x1b[38;2;150;170;150m"  # muted grey-green — OS / tagline
-  reset     = "\x1b[0m"
-
-  # Candidate banners, any width. The runtime picker selects the widest that
-  # fits the terminal, so add smaller renders here for cross-terminal fit.
-  banners = [bannerWide]
-
-  # titleArt must be strictly one physical line per array entry
+  bannerWide = staticRead("../assets/lowcacheascii")
   titleArt = [
     r"██╗      ██████╗ ██╗    ██╗ ██████╗ █████╗  ██████╗██╗  ██╗███████╗",
     r"██║     ██╔═══██╗██║    ██║██╔════╝██╔══██╗██╔════╝██║  ██║██╔════╝",
@@ -32,134 +12,130 @@ const
     r"╚══════╝ ╚═════╝  ╚══╝╚══╝  ╚═════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝"
   ]
 
-  tagline = "LowCache, High Throughput"
+proc printHelp() =
+  stdout.writeLine "Usage: volinit [options]"
+  stdout.writeLine "Options:"
+  stdout.writeLine "  --mode=MODE      Set layout mode (auto, split-panel, hero, compact, monogram)"
+  stdout.writeLine "  --theme=THEME    Set theme (chip-green, mono, synthwave)"
+  stdout.writeLine "  --animate        Enable scanline reveal animation"
+  stdout.writeLine "  --demo           Render all modes and themes"
+  stdout.writeLine "  --version        Print version"
+  stdout.writeLine "  --help           Print help"
+  quit(0)
 
-proc stripAnsi(s: string): string =
-  # Robust ANSI stripping using regex to handle TrueColor (24-bit) sequences
-  result = s.replace(re"\x1b\[[0-9;]*[a-zA-Z]", "")
+proc printVersion() =
+  stdout.writeLine "volinit 0.2.0"
+  quit(0)
 
-proc visualWidth(art: string): int =
-  # Max visual (ANSI-stripped) column count across the art's lines
-  for line in art.splitLines():
-    let w = stripAnsi(line).strip(trailing = true).runeLen
-    if w > result: result = w
-
-proc pickBanner(termWidth: int): string =
-  # Choose the widest banner that fits the terminal; fall back to the narrowest
-  var bestW = -1
-  var narrowestW = int.high
-  var narrowest = ""
-  for art in banners:
-    let w = visualWidth(art)
-    if w <= termWidth and w > bestW:
-      result = art; bestW = w
-    if w < narrowestW:
-      narrowest = art; narrowestW = w
-  if bestW < 0: result = narrowest
-
-proc getMinIndent(lines: openArray[string]): int =
-  result = int.high
-  for line in lines:
-    let clean = stripAnsi(line)
-    if clean.strip().len == 0: continue
-    var indent = 0
-    while indent < clean.len and clean[indent] == ' ':
-      inc indent
-    if indent < result: result = indent
-  if result == int.high: result = 0
-
-proc stripLeadingSpaces(s: string, count: int): string =
-  var stripped = 0
-  result = s
-  var i = 0
-  while i < result.len and stripped < count:
-    if result[i] == '\x1b':
-      inc i
-      if i < result.len and result[i] == '[':
-        inc i
-        while i < result.len and not (result[i] in {'a'..'z', 'A'..'Z'}):
-          inc i
-        inc i
-    elif result[i] == ' ':
-      result.delete(i..i)
-      inc stripped
-    else:
-      break
-
-proc centerText(text: string, width: int) =
-  let cleanText = stripAnsi(text).strip(trailing = true)
-  let padding = (width - cleanText.runeLen) div 2
-  if padding > 0:
-    stdout.write(repeat(' ', padding))
-  stdout.writeLine(text.strip(trailing = true))
-
-proc getOS(): string =
-  try:
-    result = "/etc/os-release".loadConfig.getSectionValue("", "PRETTY_NAME")
-  except:
-    result = "NixOS"
+proc parseCliArgs*(cfg: Config) =
+  for p in commandLineParams():
+    if p.startsWith("--mode="): cfg.display.mode = p[7..^1]
+    elif p.startsWith("--theme="): cfg.display.theme = p[8..^1]
+    elif p == "--animate": cfg.display.animate = true
+    elif p == "--demo": cfg.display.demo = true
+    elif p == "--version": printVersion()
+    elif p == "--help": printHelp()
 
 proc main() =
-  var width = terminalWidth()
-  var height = terminalHeight()
+  let cfg = initDefaultConfig()
+  
+  loadConfigFile(cfg, "/etc/volinit/config.toml")
+  
+  let configHome = getEnv("XDG_CONFIG_HOME", getHomeDir() / ".config")
+  loadConfigFile(cfg, configHome / "volinit" / "config.toml")
+  
+  loadEnvVars(cfg)
+  parseCliArgs(cfg)
 
-  if width == 0: width = 80
-  if height == 0: height = 24
+  var isPipe = not isatty(stdout)
+  let termWidth = getTerminalWidth()
+  let termHeight = getTerminalHeight()
 
-  let banner = pickBanner(width)
+  var animate = cfg.display.animate
+  if isPipe or getEnv("TMUX", "") != "" or getEnv("TERM", "").startsWith("screen"):
+    animate = false
 
-  let rawLines = banner.splitLines()
-  let bannerMinIndent = getMinIndent(rawLines)
-  var lines: seq[string] = @[]
-  for rline in rawLines:
-    lines.add(stripLeadingSpaces(rline, bannerMinIndent))
+  var cells: seq[Cell] = @[]
+  
+  var user = cfg.identity.user
+  if user == "": user = getUser()
+  
+  cfg.palette = getThemePalette(cfg.display.theme)
 
-  let titleMinIndent = getMinIndent(titleArt)
-  var processedTitle: seq[string] = @[]
-  for tline in titleArt:
-    processedTitle.add(stripLeadingSpaces(tline, titleMinIndent))
+  if isPipe:
+    cells.add(Cell(content: "user: " & user))
+    cells.add(Cell(content: "handle: " & cfg.identity.handle))
+    if cfg.metadata.show_os:
+      cells.add(Cell(content: "os: " & getOS()))
+    cells.add(Cell(content: "tagline: " & cfg.identity.tagline))
+    if cfg.metadata.show_git:
+      let git = getGit()
+      if git != "": cells.add(Cell(content: "git: " & git))
+    if cfg.metadata.show_battery:
+      let bat = getBattery()
+      if bat != "": cells.add(Cell(content: "battery: " & bat))
+  else:
+    cells.add(Cell(content: cfg.palette.name & user & cfg.palette.reset & " " & cfg.palette.handle & cfg.identity.handle & cfg.palette.reset))
+    if cfg.metadata.show_os:
+      cells.add(Cell(content: cfg.palette.info & getOS() & cfg.palette.reset))
+    cells.add(Cell(content: cfg.palette.info & cfg.identity.tagline & cfg.palette.reset))
+    
+    if cfg.metadata.show_git:
+      let git = getGit()
+      if git != "":
+        cells.add(Cell(content: cfg.palette.info & git & cfg.palette.reset))
+    if cfg.metadata.show_battery:
+      let bat = getBattery()
+      if bat != "":
+        cells.add(Cell(content: cfg.palette.info & bat & cfg.palette.reset))
 
-  # Visual width of the chosen banner, to center it as a whole block
-  var maxBannerWidth = 0
-  for line in lines:
-    let vWidth = stripAnsi(line).strip(trailing = true).runeLen
-    if vWidth > maxBannerWidth: maxBannerWidth = vWidth
+  if cfg.display.demo:
+    isPipe = false
+    animate = false
+    let modes = ["split-panel", "hero", "compact", "monogram"]
+    let themes = ["chip-green", "mono", "synthwave"]
+    let osLine = getOS()
+    for theme in themes:
+      for mode in modes:
+        cfg.palette = getThemePalette(theme)
+        # rebuild cells per theme; demo always renders in tty (non-pipe) format
+        var demoCells: seq[Cell] = @[]
+        demoCells.add(Cell(content: cfg.palette.name & user & cfg.palette.reset & " " & cfg.palette.handle & cfg.identity.handle & cfg.palette.reset))
+        if cfg.metadata.show_os:
+          demoCells.add(Cell(content: cfg.palette.info & osLine & cfg.palette.reset))
+        demoCells.add(Cell(content: cfg.palette.info & cfg.identity.tagline & cfg.palette.reset))
 
-  let bannerPadding = (width - maxBannerWidth) div 2
-  let bannerPadStr = if bannerPadding > 0: repeat(' ', bannerPadding) else: ""
+        stdout.writeLine("--- DEMO: Mode=" & mode & " Theme=" & theme & " ---")
+        var plan = RenderPlan(
+          banner: bannerWide,
+          titleBlock: @titleArt,
+          cells: demoCells,
+          palette: cfg.palette,
+          mode: mode,
+          width: termWidth,
+          height: termHeight,
+          animate: animate,
+          demo: true,
+          isPipe: isPipe
+        )
+        renderPlan(plan)
+        stdout.writeLine("")
+    return
 
-  # banner + title block + 3 identity lines (name/handle, OS, tagline)
-  let totalOutputHeight = lines.len + processedTitle.len + 3
-  let verticalPadding = (height - totalOutputHeight) div 2
+  var plan = RenderPlan(
+    banner: bannerWide,
+    titleBlock: @titleArt,
+    cells: cells,
+    palette: cfg.palette,
+    mode: cfg.display.mode,
+    width: termWidth,
+    height: termHeight,
+    animate: animate,
+    demo: cfg.display.demo,
+    isPipe: isPipe
+  )
 
-  stdout.write("\x1b[H\x1b[2J")
-
-  if verticalPadding > 0:
-    for _ in 1..verticalPadding:
-      stdout.writeLine("")
-
-  # Print the badge whole — no mid-split
-  for line in lines:
-    stdout.write(bannerPadStr)
-    stdout.writeLine(line)
-
-  # Center the title as one block (uniform left pad) so trailing-space rows
-  # don't drift right the way per-line centering would.
-  var maxTitleWidth = 0
-  for tline in processedTitle:
-    let w = stripAnsi(tline).runeLen
-    if w > maxTitleWidth: maxTitleWidth = w
-  let titlePadding = (width - maxTitleWidth) div 2
-  let titlePadStr = if titlePadding > 0: repeat(' ', titlePadding) else: ""
-  for tline in processedTitle:
-    stdout.write(titlePadStr)
-    stdout.writeLine(titleCol & tline & reset)
-
-  centerText(nameCol & getEnv("USER", "user") & reset & " " & handleCol & onlineHandle & reset, width)
-  centerText(infoCol & getOS() & reset, width)
-  centerText(infoCol & tagline & reset, width)
-
-  stdout.flushFile()
+  renderPlan(plan)
 
 when isMainModule:
   main()
