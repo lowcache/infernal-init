@@ -1,5 +1,4 @@
-import std/os, std/osproc, std/strutils, std/parsecfg
-import ansi
+import std/os, std/osproc, std/strutils
 
 proc findConverter*(): string =
   let converters = ["jp2a", "chafa", "img2txt"]
@@ -8,31 +7,29 @@ proc findConverter*(): string =
     if outCmd != "": return c
   return ""
 
-proc postProcessArt*(art: string, maxW: int): string =
+proc postProcessArt*(art: string): string =
+  # Normalize line endings, strip trailing whitespace per line and trailing blank lines
   var res = ""
   for line in art.splitLines():
-    # keep valid ANSI and ascii. No control chars except ansi.
-    # we don't strictly strip ansi here since converters emit ansi.
-    # We will strip right whitespace
-    let r = line.strip(leading = false, trailing = true)
-    res.add(r & "\n")
-  return res
+    res.add(line.strip(leading = false, trailing = true) & "\n")
+  result = res.strip(leading = false, trailing = true) & "\n"
 
 proc runConverter*(toolName: string, imgPath: string, width: int): string =
+  let img = quoteShell(imgPath)
   var cmd = ""
   case toolName
   of "jp2a":
-    cmd = "jp2a --width=" & $width & " --colors " & imgPath
+    cmd = "jp2a --width=" & $width & " --colors " & img
   of "chafa":
-    cmd = "chafa --size=" & $width & "x" & $(width div 2) & " --colors=full " & imgPath
+    cmd = "chafa --size=" & $width & "x" & $(width div 2) & " --colors=full " & img
   of "img2txt":
-    cmd = "img2txt -W " & $width & " " & imgPath
+    cmd = "img2txt -W " & $width & " " & img
   else:
     return ""
-    
+
   let (outp, exitCode) = execCmdEx(cmd)
   if exitCode == 0:
-    return outp
+    return postProcessArt(outp)
   return ""
 
 proc handleGenerate*(imgPath: string, outName: string) =
@@ -66,8 +63,10 @@ proc handleGenerate*(imgPath: string, outName: string) =
   let monoArt = runConverter(toolName, imgPath, 40)
   writeFile(artDir / "monogram.txt", monoArt)
   
-  # Create pack.toml
-  let packContent = "[theme]\nname = \"" & name & "\"\ndescription = \"Generated from " & extractFilename(imgPath) & "\"\n"
+  # Create pack.toml (strip quotes from interpolated values to keep the file parseable)
+  let safeName = name.replace("\"", "")
+  let safeSrc = extractFilename(imgPath).replace("\"", "")
+  let packContent = "[theme]\nname = \"" & safeName & "\"\ndescription = \"Generated from " & safeSrc & "\"\n"
   writeFile(packDir / "pack.toml", packContent)
   
   # Optional: Palette (Empty defaults to chip-green)

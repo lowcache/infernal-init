@@ -4,6 +4,7 @@ import volinitpkg/export_cmd, volinitpkg/generate_cmd
 
 const
   bannerWide = staticRead("../assets/lowcacheascii")
+  bannerSmall = staticRead("../assets/lowcacheascii-sm")
   titleArt = [
     r"██╗      ██████╗ ██╗    ██╗ ██████╗ █████╗  ██████╗██╗  ██╗███████╗",
     r"██║     ██╔═══██╗██║    ██║██╔════╝██╔══██╗██╔════╝██║  ██║██╔════╝",
@@ -34,17 +35,31 @@ proc printVersion() =
   quit(0)
 
 proc printThemes() =
-  let themes = getAllThemes(bannerWide)
+  let themes = getAllThemes(bannerWide, bannerSmall)
   for t in themes:
     let prefix = if t.isBuiltin: "(built-in)" else: "(user-pack)"
     stdout.writeLine t.name & " " & prefix & " - " & t.description
   quit(0)
+
+proc loadFullConfig(): Config =
+  result = initDefaultConfig()
+  loadConfigFile(result, "/etc/volinit/config.toml")
+  let configHome = getEnv("XDG_CONFIG_HOME", getHomeDir() / ".config")
+  loadConfigFile(result, configHome / "volinit" / "config.toml")
+  loadEnvVars(result)
+
+proc identityCells(cfg: Config, user: string): seq[Cell] =
+  result.add(Cell(content: cfg.palette.name & user & cfg.palette.reset & " " & cfg.palette.handle & cfg.identity.handle & cfg.palette.reset))
+  if cfg.metadata.show_os:
+    result.add(Cell(content: cfg.palette.info & getOS() & cfg.palette.reset))
+  result.add(Cell(content: cfg.palette.info & cfg.identity.tagline & cfg.palette.reset))
 
 proc main() =
   let args = commandLineParams()
   if args.len > 0 and args[0] == "export":
     var format = "ansi"
     var output = ""
+    let cfg = loadFullConfig()
     var i = 1
     while i < args.len:
       if args[i] == "--format" and i + 1 < args.len:
@@ -53,26 +68,18 @@ proc main() =
       elif args[i] == "--output" and i + 1 < args.len:
         output = args[i+1]
         i += 2
+      elif args[i].startsWith("--theme="):
+        cfg.display.theme = args[i][8..^1]
+        i += 1
       else: i += 1
-      
-    let cfg = initDefaultConfig()
-    loadConfigFile(cfg, "/etc/volinit/config.toml")
-    let configHome = getEnv("XDG_CONFIG_HOME", getHomeDir() / ".config")
-    loadConfigFile(cfg, configHome / "volinit" / "config.toml")
-    loadEnvVars(cfg)
-    
-    let tp = getTheme(cfg.display.theme, bannerWide)
-    let themePack = if tp != nil: tp else: getTheme("chip-green", bannerWide)
+
+    let tp = getTheme(cfg.display.theme, bannerWide, bannerSmall)
+    let themePack = if tp != nil: tp else: getTheme("chip-green", bannerWide, bannerSmall)
     cfg.palette = themePack.palette
     var user = cfg.identity.user
     if user == "": user = getUser()
-    
-    var cells: seq[Cell] = @[]
-    cells.add(Cell(content: cfg.palette.name & user & cfg.palette.reset & " " & cfg.palette.handle & cfg.identity.handle & cfg.palette.reset))
-    if cfg.metadata.show_os:
-      cells.add(Cell(content: cfg.palette.info & getOS() & cfg.palette.reset))
-    cells.add(Cell(content: cfg.palette.info & cfg.identity.tagline & cfg.palette.reset))
-    
+    let cells = identityCells(cfg, user)
+
     var plan = RenderPlan(
       banner: themePack.heroArt,
       titleBlock: @titleArt,
@@ -103,14 +110,8 @@ proc main() =
     handleGenerate(imgPath, outName)
     quit(0)
 
-  let cfg = initDefaultConfig()
-  
-  loadConfigFile(cfg, "/etc/volinit/config.toml")
-  let configHome = getEnv("XDG_CONFIG_HOME", getHomeDir() / ".config")
-  loadConfigFile(cfg, configHome / "volinit" / "config.toml")
-  
-  loadEnvVars(cfg)
-  
+  let cfg = loadFullConfig()
+
   for p in args:
     if p.startsWith("--mode="): cfg.display.mode = p[7..^1]
     elif p.startsWith("--theme="): cfg.display.theme = p[8..^1]
@@ -133,10 +134,10 @@ proc main() =
   var user = cfg.identity.user
   if user == "": user = getUser()
   
-  var tp = getTheme(cfg.display.theme, bannerWide)
+  var tp = getTheme(cfg.display.theme, bannerWide, bannerSmall)
   if tp == nil:
     stderr.writeLine("volinit: Theme '" & cfg.display.theme & "' not found, falling back to chip-green")
-    tp = getTheme("chip-green", bannerWide)
+    tp = getTheme("chip-green", bannerWide, bannerSmall)
     
   cfg.palette = tp.palette
 
@@ -153,11 +154,8 @@ proc main() =
       let bat = getBattery()
       if bat != "": cells.add(Cell(content: "battery: " & bat))
   else:
-    cells.add(Cell(content: cfg.palette.name & user & cfg.palette.reset & " " & cfg.palette.handle & cfg.identity.handle & cfg.palette.reset))
-    if cfg.metadata.show_os:
-      cells.add(Cell(content: cfg.palette.info & getOS() & cfg.palette.reset))
-    cells.add(Cell(content: cfg.palette.info & cfg.identity.tagline & cfg.palette.reset))
-    
+    cells = identityCells(cfg, user)
+
     if cfg.metadata.show_git:
       let git = getGit()
       if git != "":
@@ -176,7 +174,7 @@ proc main() =
     isPipe = false
     animate = false
     let modes = ["split-panel", "hero", "compact", "monogram"]
-    let allTs = getAllThemes(bannerWide)
+    let allTs = getAllThemes(bannerWide, bannerSmall)
     let osLine = getOS()
     for themePack in allTs:
       for mode in modes:
@@ -202,7 +200,8 @@ proc main() =
           height: termHeight,
           animate: animate,
           demo: true,
-          isPipe: isPipe
+          isPipe: isPipe,
+          wordmark: cfg.identity.wordmark
         )
         renderPlan(plan)
         stdout.writeLine("")
@@ -218,7 +217,8 @@ proc main() =
     height: termHeight,
     animate: animate,
     demo: cfg.display.demo,
-    isPipe: isPipe
+    isPipe: isPipe,
+    wordmark: cfg.identity.wordmark
   )
 
   renderPlan(plan)

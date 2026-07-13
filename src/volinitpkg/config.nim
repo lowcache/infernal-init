@@ -19,6 +19,7 @@ type
     handle*: string
     tagline*: string
     user*: string
+    wordmark*: string
 
   ConfigMetadata* = object
     show_os*: bool
@@ -46,7 +47,7 @@ proc getThemePalette*(themeName: string): Palette =
 proc initDefaultConfig*(): Config =
   result = Config(
     display: ConfigDisplay(mode: "auto", theme: "chip-green", animate: false, demo: false),
-    identity: ConfigIdentity(handle: "@lowcache", tagline: "LowCache, High Throughput", user: ""),
+    identity: ConfigIdentity(handle: "@lowcache", tagline: "LowCache, High Throughput", user: "", wordmark: "LowCache"),
     metadata: ConfigMetadata(show_os: true, show_git: false, show_battery: false),
     palette: themeChipGreen
   )
@@ -84,6 +85,8 @@ proc loadConfigFile*(cfg: Config, path: string) =
   if idTagline != "": cfg.identity.tagline = cleanVal(idTagline)
   let idUser = dict.getSectionValue("identity", "user")
   if idUser != "": cfg.identity.user = cleanVal(idUser)
+  let idWordmark = dict.getSectionValue("identity", "wordmark")
+  if idWordmark != "": cfg.identity.wordmark = cleanVal(idWordmark)
 
   let metaOs = dict.getSectionValue("metadata", "show_os")
   if metaOs != "": cfg.metadata.show_os = parseBoolStr(metaOs, cfg.metadata.show_os)

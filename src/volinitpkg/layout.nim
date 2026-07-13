@@ -19,6 +19,18 @@ type
     noAnsi*: bool
     demo*: bool
     isPipe*: bool
+    wordmark*: string
+
+proc bannerBlock(plan: RenderPlan, reserveRows: int): seq[string] =
+  # De-indented banner lines, or empty if the art doesn't fit the terminal
+  # (width, or height once reserveRows are set aside for title/metadata)
+  if plan.banner.len == 0: return @[]
+  if visualWidth(plan.banner) > plan.width: return @[]
+  let rawLines = plan.banner.splitLines()
+  if rawLines.len > plan.height - reserveRows: return @[]
+  let minIndent = getMinIndent(rawLines)
+  for rline in rawLines:
+    result.add(stripLeadingSpaces(rline, minIndent))
 
 proc determineMode*(requestedMode: string, width: int): string =
   if requestedMode != "auto" and requestedMode != "":
@@ -137,42 +149,78 @@ proc renderHero*(plan: RenderPlan) =
     if plan.animate: sleep(15)
 
 proc renderCompact*(plan: RenderPlan) =
+  # Banner art renders when it fits the terminal; otherwise title-only.
+  # A title figlet wider than the terminal degrades to the plain wordmark.
   let titleMinIndent = getMinIndent(plan.titleBlock)
   var titleLines: seq[string] = @[]
   for tline in plan.titleBlock:
     titleLines.add(stripLeadingSpaces(tline, titleMinIndent))
-    
+
   var maxTitleWidth = 0
   for tline in titleLines:
     let w = visualWidth(tline)
     if w > maxTitleWidth: maxTitleWidth = w
 
-  let totalOutputHeight = titleLines.len + plan.cells.len
+  if maxTitleWidth > plan.width:
+    let mark = if plan.wordmark.len > 0: plan.wordmark else: "LowCache"
+    titleLines = @[mark]
+    maxTitleWidth = visualWidth(mark)
+
+  let bannerLines = bannerBlock(plan, titleLines.len + plan.cells.len)
+  var maxBannerWidth = 0
+  for line in bannerLines:
+    let w = visualWidth(line)
+    if w > maxBannerWidth: maxBannerWidth = w
+
+  let totalOutputHeight = bannerLines.len + titleLines.len + plan.cells.len
   let verticalPadding = max(0, (plan.height - totalOutputHeight) div 2)
-  
+
   if verticalPadding > 0 and not plan.demo:
     for _ in 1..verticalPadding: stdout.writeLine("")
-    
+
+  let bannerPadding = max(0, (plan.width - maxBannerWidth) div 2)
+  let bannerPadStr = if bannerPadding > 0: repeat(' ', bannerPadding) else: ""
+  for line in bannerLines:
+    stdout.write(bannerPadStr)
+    stdout.writeLine(line)
+    if plan.animate: sleep(15)
+
   let titlePadding = max(0, (plan.width - maxTitleWidth) div 2)
   let titlePadStr = if titlePadding > 0: repeat(' ', titlePadding) else: ""
   for tline in titleLines:
     stdout.write(titlePadStr)
     stdout.writeLine(plan.palette.title & tline & plan.palette.reset)
     if plan.animate: sleep(15)
-    
+
   for cell in plan.cells:
     centerText(cell.content, plan.width)
     if plan.animate: sleep(15)
 
 proc renderMonogram*(plan: RenderPlan) =
-  let totalOutputHeight = 1 + plan.cells.len
+  # Banner art renders when it fits; otherwise a plain wordmark line
+  let bannerLines = bannerBlock(plan, plan.cells.len)
+  let markLines = if bannerLines.len > 0: bannerLines.len else: 1
+  let totalOutputHeight = markLines + plan.cells.len
   let verticalPadding = max(0, (plan.height - totalOutputHeight) div 2)
-  
+
   if verticalPadding > 0 and not plan.demo:
     for _ in 1..verticalPadding: stdout.writeLine("")
-    
-  centerText(plan.palette.title & "LowCache" & plan.palette.reset, plan.width)
-  if plan.animate: sleep(15)
+
+  if bannerLines.len > 0:
+    var maxBannerWidth = 0
+    for line in bannerLines:
+      let w = visualWidth(line)
+      if w > maxBannerWidth: maxBannerWidth = w
+    let pad = max(0, (plan.width - maxBannerWidth) div 2)
+    let padStr = if pad > 0: repeat(' ', pad) else: ""
+    for line in bannerLines:
+      stdout.write(padStr)
+      stdout.writeLine(line)
+      if plan.animate: sleep(15)
+  else:
+    let mark = if plan.wordmark.len > 0: plan.wordmark else: "LowCache"
+    centerText(plan.palette.title & mark & plan.palette.reset, plan.width)
+    if plan.animate: sleep(15)
   for cell in plan.cells:
     centerText(cell.content, plan.width)
     if plan.animate: sleep(15)

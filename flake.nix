@@ -14,7 +14,7 @@
       {
         packages.default = pkgs.buildNimPackage {
           pname = "volinit";
-          version = "0.2.0";
+          version = "0.3.0";
           src = ./.;
           buildInputs = with pkgs; [ nim ];
           

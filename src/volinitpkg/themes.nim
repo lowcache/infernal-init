@@ -11,14 +11,16 @@ type
     monogramArt*: string
     isBuiltin*: bool
 
-proc getBuiltinThemes*(defaultBanner: string): seq[ThemePack] =
+proc getBuiltinThemes*(defaultBanner: string, smallBanner = ""): seq[ThemePack] =
+  # smallBanner: compact/monogram-class art; empty means fall back to hero art
+  let small = if smallBanner.len > 0: smallBanner else: defaultBanner
   let greenTheme = ThemePack(
     name: "chip-green",
     description: "Default PCB green / grey theme",
     palette: getThemePalette("chip-green"),
     heroArt: defaultBanner,
-    compactArt: defaultBanner,
-    monogramArt: defaultBanner,
+    compactArt: small,
+    monogramArt: small,
     isBuiltin: true
   )
   let monoTheme = ThemePack(
@@ -26,8 +28,8 @@ proc getBuiltinThemes*(defaultBanner: string): seq[ThemePack] =
     description: "Monochrome, no ANSI colors",
     palette: getThemePalette("mono"),
     heroArt: defaultBanner,
-    compactArt: defaultBanner,
-    monogramArt: defaultBanner,
+    compactArt: small,
+    monogramArt: small,
     isBuiltin: true
   )
   let synthwaveTheme = ThemePack(
@@ -35,8 +37,8 @@ proc getBuiltinThemes*(defaultBanner: string): seq[ThemePack] =
     description: "Neon grid, retrowave palette",
     palette: getThemePalette("synthwave"),
     heroArt: defaultBanner,
-    compactArt: defaultBanner,
-    monogramArt: defaultBanner,
+    compactArt: small,
+    monogramArt: small,
     isBuiltin: true
   )
   return @[greenTheme, monoTheme, synthwaveTheme]
@@ -68,7 +70,7 @@ proc isSafeArt*(art: string): bool =
       return false
   return true
 
-proc loadUserTheme*(themesDir, name: string, defaultBanner: string): ThemePack =
+proc loadUserTheme*(themesDir, name: string, defaultBanner: string, smallBanner = ""): ThemePack =
   let themeDir = themesDir / name
   if not dirExists(themeDir): return nil
   
@@ -88,9 +90,10 @@ proc loadUserTheme*(themesDir, name: string, defaultBanner: string): ThemePack =
   let palettePath = themeDir / "palette.toml"
   let palette = if fileExists(palettePath): loadPaletteFromConfig(palettePath) else: getThemePalette("chip-green")
   
+  let small = if smallBanner.len > 0: smallBanner else: defaultBanner
   var heroArt = defaultBanner
-  var compactArt = defaultBanner
-  var monogramArt = defaultBanner
+  var compactArt = small
+  var monogramArt = small
   
   let artDir = themeDir / "art"
   if dirExists(artDir):
@@ -117,32 +120,30 @@ proc loadUserTheme*(themesDir, name: string, defaultBanner: string): ThemePack =
     isBuiltin: false
   )
 
-proc getAllThemes*(defaultBanner: string): seq[ThemePack] =
+proc getAllThemes*(defaultBanner: string, smallBanner = ""): seq[ThemePack] =
   var themes: seq[ThemePack] = @[]
-  
+
   let configHome = getEnv("XDG_CONFIG_HOME", getHomeDir() / ".config")
   let themesDir = configHome / "volinit" / "themes"
-  
+
   if dirExists(themesDir):
     for kind, path in walkDir(themesDir):
       if kind == pcDir:
         let tName = path.extractFilename()
-        let tp = loadUserTheme(themesDir, tName, defaultBanner)
+        let tp = loadUserTheme(themesDir, tName, defaultBanner, smallBanner)
         if tp != nil: themes.add(tp)
-        
-  for bt in getBuiltinThemes(defaultBanner):
+
+  for bt in getBuiltinThemes(defaultBanner, smallBanner):
     themes.add(bt)
-    
+
   return themes
 
-proc getTheme*(name: string, defaultBanner: string): ThemePack =
+proc getTheme*(name: string, defaultBanner: string, smallBanner = ""): ThemePack =
+  # Built-ins resolve first so the default startup path never touches the
+  # filesystem for theme lookup (user packs cannot shadow built-in names).
+  for bt in getBuiltinThemes(defaultBanner, smallBanner):
+    if bt.name == name: return bt
+
   let configHome = getEnv("XDG_CONFIG_HOME", getHomeDir() / ".config")
   let themesDir = configHome / "volinit" / "themes"
-  
-  let ut = loadUserTheme(themesDir, name, defaultBanner)
-  if ut != nil: return ut
-  
-  for bt in getBuiltinThemes(defaultBanner):
-    if bt.name == name: return bt
-    
-  return nil
+  return loadUserTheme(themesDir, name, defaultBanner, smallBanner)

@@ -24,7 +24,10 @@ To install a theme, place its folder into `~/.config/volinit/themes/`.
 ```
 
 To run with your new theme:
-`volinit --theme my-theme`
+`volinit --theme=my-theme`
+
+Note: built-in theme names (`chip-green`, `mono`, `synthwave`) resolve before user
+packs and cannot be shadowed — pick a distinct name for your pack.
 
 ## Community Themes
 
