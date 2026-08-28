@@ -138,4 +138,9 @@ plus a 14×28 small render for narrow terminals). Changing the built-in art mean
 editing those assets and rebuilding the derivation.
 
 ---
+
+If volinit is useful to you, you can [sponsor the work](https://github.com/sponsors/lowcache)
+or [buy me a coffee](https://buymeacoffee.com/lowcache).
+
+---
 *lowcache 2026*
